@@ -28,3 +28,13 @@ CIMouse%>%
     facet_wrap(~experiment) +
     theme_bw()
 
+
+
+#differences in species challenge vs primary infection 
+CIMouse%>% 
+    ggplot(aes(mouse_strain,
+               max_WL, color=infection)) +
+    geom_boxplot() +
+    geom_jitter(width=0.2, alpha=0.8) +
+    facet_wrap(~experiment) +
+    theme_bw()
