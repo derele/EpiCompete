@@ -1,9 +1,19 @@
+#starting to work on it 
+install.packages("tidyverse")
+install.packages("Rcurl")
 library(RCurl)
 library(tidyverse)
+library(httr)
+library(dplyr)
 
 ## read the data from our lab data repository
-getURL("https://raw.githubusercontent.com/derele/Eimeria_Lab/master/data_products/Challenge_infections.csv") %>%
-    read.csv(text = .) -> CI
+CI <- read.csv("https://raw.githubusercontent.com/derele/Eimeria_Lab/master/data_products/Challenge_infections.csv")  
+
+
+#code from Emanuel:
+#didn't work for me 
+#getURL("https://raw.githubusercontent.com/derele/Eimeria_Lab/master/data_products/Challenge_infections.csv") %>%
+#    read.csv(text = .) -> CI
 
 ## remove mice which were not re-infected after making sure they are
 ## all from E57 (the original E5 only  part)
@@ -12,15 +22,29 @@ CI %>%
     count(exp=experiment,
           mice=n_distinct(EH_ID))
 
+
 ## this looks good: 742 dpi-samples from 64 mice in E57 are not
-## relevant as they were only infected ones by Alice
+## relevant as they were only infected ones (once?) (by Alice
 
 
 ### table(CI[CI$feces_weight==0, "experiment"])
+table(CI[CI$feces_weight==0, "experiment"])
 
 ## Filter accordingly and summarize the data for max oocysts and max
 ## weight loss per mouse and infection (first, challenge),
+
+
+
 ## also calculate the oocyst count
+# calculcate OPG
+CI$total_oocysts <- ((CI$oocyst_sq1 
+                       + CI$oocyst_sq2 
+                       + CI$oocyst_sq3 
+                       + CI$oocyst_sq4) / 4) * 
+    10000 * # because volume chamber
+    CI$dilution
+
+
 as_tibble(CI) %>% filter(!is.na(challenge_infection)) %>%
     rowwise() %>% mutate(OO4sq = rowSums(across(starts_with("oocyst_")))) %>%
     ## 0.1µl per square -> *10.000 to scale up to ml
