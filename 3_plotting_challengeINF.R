@@ -10,6 +10,3 @@ if(!exists("CIMouse") | !exists("CI")){
     message ("using data alredy in the interactive session")
 }
 
-
-
-

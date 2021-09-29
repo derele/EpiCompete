@@ -1,20 +1,18 @@
 #starting to work on it 
-install.packages("tidyverse")
-install.packages("Rcurl")
-library(RCurl)
 library(tidyverse)
-library(httr)
 library(dplyr)
 
 ## read the data from our lab data repository
 CI <- read.csv("https://raw.githubusercontent.com/derele/Eimeria_Lab/master/data_products/Challenge_infections.csv")  
 
-## remove mice which were not re-infected after making sure they are
-## all from E57 (the original E5 only  part)
+## THIS IS NOT TO BE SAVED, just to play around and explore/unerstand
+## the data
 CI %>%
-    filter(is.na(challenge_infection)) %>%
-    count(exp=experiment,
-          mice=n_distinct(EH_ID))
+    filter(!is.na(challenge_infection)) %>%
+    group_by(experiment) %>%
+    summarize(mice=n_distinct(EH_ID),
+              n_obs=n(),
+              n_mice_challenge=n_distinct(EH_ID[infection%in%"challenge"]))
 ## this looks good: 742 dpi-samples from 64 mice in E57 are not
 ## relevant as they were only infected ones (once?) (by Alice
 
@@ -32,15 +30,24 @@ CI %>% filter(!is.na(challenge_infection)) %>%
     mutate(relative_weight= weight/weight_dpi0*100) ->
     ## also look at this for OPG above (by uncommenting)
     ## select(feces_weight, starts_with("oocyst_"), OO4sq, OOC) %>%
-    ## print(n=40)
     ## look at this for controlling the weight calculation
     ## select(EH_ID, dpi, infection, weight, relative_weight) %>%
     ## print(n=40) 
     CI
 
 
+## FIXME in the data processing!!! 
+CI %>% select(EH_ID, primary_infection, challenge_infection, infection,
+              weight, dpi, feces_weight) %>% filter(EH_ID%in%"LM0227") %>%
+    print(n=40)
+
+CI %>% select(EH_ID, primary_infection, challenge_infection,
+              infection,  weight, dpi, feces_weight) %>%
+    filter(EH_ID%in%"LM0227") %>% print(n=40)
+
+
 ### table(CI[CI$feces_weight==0, "experiment"])
-table(CI[CI$feces_weight==0, "experiment"])
+table(CI[CI$feces_weight==0, c("experiment", "infection")])
 
 ## Filter accordingly and summarize the data for max oocysts and max
 ## weight loss per mouse and infection (first, challenge),
