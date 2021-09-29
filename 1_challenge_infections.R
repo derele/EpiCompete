@@ -9,43 +9,18 @@ library(dplyr)
 ## read the data from our lab data repository
 CI <- read.csv("https://raw.githubusercontent.com/derele/Eimeria_Lab/master/data_products/Challenge_infections.csv")  
 
-
-#code from Emanuel:
-#didn't work for me 
-#getURL("https://raw.githubusercontent.com/derele/Eimeria_Lab/master/data_products/Challenge_infections.csv") %>%
-#    read.csv(text = .) -> CI
-
 ## remove mice which were not re-infected after making sure they are
 ## all from E57 (the original E5 only  part)
 CI %>%
     filter(is.na(challenge_infection)) %>%
     count(exp=experiment,
           mice=n_distinct(EH_ID))
-
-
 ## this looks good: 742 dpi-samples from 64 mice in E57 are not
 ## relevant as they were only infected ones (once?) (by Alice
 
 
-### table(CI[CI$feces_weight==0, "experiment"])
-table(CI[CI$feces_weight==0, "experiment"])
-
-## Filter accordingly and summarize the data for max oocysts and max
-## weight loss per mouse and infection (first, challenge),
-
-
-
-## also calculate the oocyst count
-# calculcate OPG
-CI$total_oocysts <- ((CI$oocyst_sq1 
-                       + CI$oocyst_sq2 
-                       + CI$oocyst_sq3 
-                       + CI$oocyst_sq4) / 4) * 
-    10000 * # because volume chamber
-    CI$dilution
-
-
-as_tibble(CI) %>% filter(!is.na(challenge_infection)) %>%
+## now change the dataset
+CI %>% filter(!is.na(challenge_infection)) %>%
     rowwise() %>% mutate(OO4sq = rowSums(across(starts_with("oocyst_")))) %>%
     ## 0.1µl per square -> *10.000 to scale up to ml
     mutate(OOC=(OO4sq/4*10000)/dilution) %>%
@@ -54,13 +29,24 @@ as_tibble(CI) %>% filter(!is.na(challenge_infection)) %>%
     ## mutate(OPG=OOC/feces_weight) %>%
     ## also re-calculate relative weight, as this seems to have errors
     ## from a spreadsheet program (wtf!)
-    mutate(relative_weight= weight/weight_dpi0*100) %>%
+    mutate(relative_weight= weight/weight_dpi0*100) ->
     ## also look at this for OPG above (by uncommenting)
     ## select(feces_weight, starts_with("oocyst_"), OO4sq, OOC) %>%
     ## print(n=40)
     ## look at this for controlling the weight calculation
     ## select(EH_ID, dpi, infection, weight, relative_weight) %>%
-    ## print(n=40)
+    ## print(n=40) 
+    CI
+
+
+### table(CI[CI$feces_weight==0, "experiment"])
+table(CI[CI$feces_weight==0, "experiment"])
+
+## Filter accordingly and summarize the data for max oocysts and max
+## weight loss per mouse and infection (first, challenge),
+
+## summarize by mouse and infection (challenge/primary)
+as_tibble(CI) %>%
     group_by(EH_ID, infection) %>%
     summarize(max_OOC = max(OOC, na.rm=TRUE),
               max_WL = min(relative_weight, na.rm=TRUE),
@@ -76,5 +62,3 @@ as_tibble(CI) %>% filter(!is.na(challenge_infection)) %>%
 ### re-infection was "not working" those mice are actually "unifected"
 CIMouse[CIMouse$challenge_infection%in%"E88", "challenge_infection"]  <- "UNI"
     
-
-
