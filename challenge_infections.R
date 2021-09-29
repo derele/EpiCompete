@@ -1,5 +1,8 @@
+#starting to work on it 
 library(RCurl)
 library(tidyverse)
+
+#hellooo
 
 ## read the data from our lab data repository
 getURL("https://raw.githubusercontent.com/derele/Eimeria_Lab/master/data_products/Challenge_infections.csv") %>%
