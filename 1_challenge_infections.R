@@ -35,22 +35,17 @@ CI %>% filter(!is.na(challenge_infection)) %>%
     ## print(n=40) 
     CI
 
+## HAVE a look at missing data. This is either missing because of the
+## feces_weight zero problem (for E57) or because mice died
+## (especially in primary infection in E10 and E11)
+CI %>% group_by(EH_ID, infection, experiment) %>%
+    summarize(n_distinct_labels=n_distinct(labels),
+              n_notNA=n_distinct(labels[!is.na(OOC)&!is.na(relative_weight)])) %>%
+    print(n=220)
 
-## FIXME in the data processing!!! 
-CI %>% select(EH_ID, primary_infection, challenge_infection, infection,
-              weight, dpi, feces_weight) %>% filter(EH_ID%in%"LM0227") %>%
-    print(n=40)
-
-CI %>% select(EH_ID, primary_infection, challenge_infection,
-              infection,  weight, dpi, feces_weight) %>%
-    filter(EH_ID%in%"LM0227") %>% print(n=40)
-
-
+## FIXME in data processing!!!
 ### table(CI[CI$feces_weight==0, "experiment"])
 table(CI[CI$feces_weight==0, c("experiment", "infection")])
-
-## Filter accordingly and summarize the data for max oocysts and max
-## weight loss per mouse and infection (first, challenge),
 
 ## summarize by mouse and infection (challenge/primary)
 as_tibble(CI) %>%
@@ -62,10 +57,30 @@ as_tibble(CI) %>%
               mouse_strain= unique(mouse_strain),
               primary_infection=unique(primary_infection),
               challenge_infection=unique(challenge_infection)
-              ) -> CIMouse
+              ) %>%
+    ### the E88 innoculum in E57 challenge infection was "not
+    ### working", these mice are basically unifected controls
+    mutate(challenge_infection=ifelse(!experiment%in%"E57",
+                                      challenge_infection,
+                               ifelse(challenge_infection%in%"E88", "UNI",
+                                      challenge_infection))) %>%
+    rowwise()%>%
+    mutate(infection_history=paste0(primary_infection, "_",
+                                    challenge_infection)) -> CIMouse
+
+### This wider format might be more usable and more intuitive:
+CIMouse %>%  
+    pivot_wider(names_from = infection,
+                values_from = c(max_OOC, max_WL)) ->
+    CIMouseW
 
 
-### now: we have discoverd that in E57 mice the E88 innoculum used for
-### re-infection was "not working" those mice are actually "unifected"
-CIMouse[CIMouse$challenge_infection%in%"E88", "challenge_infection"]  <- "UNI"
-    
+## object genereated in this script are: 
+
+## CI - challenge infection full dataset for all dpi
+
+## CIMouse - challenge infection dataset with per mouse and infection
+## type (challenge/primary) max oocyst and max weight loss
+
+## CIMouseW - same as CIMouse but wide format with different columns
+## for the infection types (for each weight loss and oocyst shedding)
