@@ -27,12 +27,21 @@ CI %>% filter(!is.na(challenge_infection)) %>%
     ## mutate(OPG=OOC/feces_weight) %>%
     ## also re-calculate relative weight, as this seems to have errors
     ## from a spreadsheet program (wtf!)
-    mutate(relative_weight= weight/weight_dpi0*100) ->
+    mutate(relative_weight= weight/weight_dpi0*100) %>%
     ## also look at this for OPG above (by uncommenting)
     ## select(feces_weight, starts_with("oocyst_"), OO4sq, OOC) %>%
     ## look at this for controlling the weight calculation
     ## select(EH_ID, dpi, infection, weight, relative_weight) %>%
-    ## print(n=40) 
+    ## print(n=40)
+    ## the E88 innoculum in E57 challenge infection was "not
+    ## working", these mice are basically unifected controls
+    mutate(challenge_infection=ifelse(!experiment%in%"E57",
+                                      challenge_infection,
+                               ifelse(challenge_infection%in%"E88", "UNI",
+                                      challenge_infection))) %>%
+    ## then correct the infection history
+    mutate(infection_history=paste0(primary_infection, "_",
+                                    challenge_infection)) ->
     CI
 
 ## HAVE a look at missing data. This is either missing because of the
@@ -43,9 +52,39 @@ CI %>% group_by(EH_ID, infection, experiment) %>%
               n_notNA=n_distinct(labels[!is.na(OOC)&!is.na(relative_weight)])) %>%
     print(n=220)
 
-## FIXME in data processing!!!
-### table(CI[CI$feces_weight==0, "experiment"])
-table(CI[CI$feces_weight==0, c("experiment", "infection")])
+### feces weight is only missing in one case when we have oocysts
+### (other mice are dead)
+table(CI[CI$feces_weight==0, "oocyst_sq1"])
+
+
+## For an analysis of immune protection we want the following
+## categories in one column
+CI$infection_type <- NA
+## primary_E88
+CI$infection_type[CI$infection_history%in%"UNI_E88" &
+                  CI$infection%in%"challenge"] <-  "primary_E88"
+CI$infection_type[CI$primary_infection%in%"E88" &
+                  CI$infection%in%"primary"] <-  "primary_E88"
+## homologous_E88
+CI$infection_type[CI$infection_history%in%"E88_E88" &
+                  CI$infection%in%"challenge"] <-  "homologous_E88"
+## heterologous_E88 
+CI$infection_type[CI$infection_history%in%"E64_E88" &
+                  CI$infection%in%"challenge"] <-  "heterologous_E88"
+## primary_E64  ("UNI_E64" and challenge in infection) E64_* and primary in infection
+CI$infection_type[CI$infection_history%in%"UNI_E64" &
+                  CI$infection%in%"challenge"] <-  "primary_E64"
+CI$infection_type[CI$primary_infection%in%"E64" &
+                  CI$infection%in%"primary"] <-  "primary_E64"
+## homologous_E64
+CI$infection_type[CI$infection_history%in%"E64_E64" &
+                  CI$infection%in%"challenge"] <-  "homologous_E64"
+## heterologous_E64
+CI$infection_type[CI$infection_history%in%"E88_E64" &
+                  CI$infection%in%"challenge"] <-  "heterologous_E64"
+## the remaining should be UNI?!
+CI$infection_type[is.na(CI$infection_type)] <- "UNI"
+
 
 ## summarize by mouse and infection (challenge/primary)
 as_tibble(CI) %>%
@@ -56,17 +95,12 @@ as_tibble(CI) %>%
               experiment = unique(experiment),
               mouse_strain= unique(mouse_strain),
               primary_infection=unique(primary_infection),
-              challenge_infection=unique(challenge_infection)
-              ) %>%
-    ### the E88 innoculum in E57 challenge infection was "not
-    ### working", these mice are basically unifected controls
-    mutate(challenge_infection=ifelse(!experiment%in%"E57",
-                                      challenge_infection,
-                               ifelse(challenge_infection%in%"E88", "UNI",
-                                      challenge_infection))) %>%
-    rowwise()%>%
-    mutate(infection_history=paste0(primary_infection, "_",
-                                    challenge_infection)) -> CIMouse
+              challenge_infection=unique(challenge_infection),
+              infection_history=unique(infection_history),
+              infection_type=unique(infection_type)) ->
+    CIMouse
+
+
 
 ### This wider format might be more usable and more intuitive:
 CIMouse %>%  
@@ -84,3 +118,4 @@ CIMouse %>%
 
 ## CIMouseW - same as CIMouse but wide format with different columns
 ## for the infection types (for each weight loss and oocyst shedding)
+
